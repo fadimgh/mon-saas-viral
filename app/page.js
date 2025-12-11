@@ -17,20 +17,32 @@ const ExternalLinkIcon = () => (
 
 export default function Home() {
   const [review, setReview] = useState('');
-  const [reviewLink, setReviewLink] = useState(''); // Nouveau champ
+  const [reviewLink, setReviewLink] = useState('');
   const [tone, setTone] = useState('Professionnel et Empathique');
   const [response, setResponse] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Gestion des crédits et VIP
   const [credits, setCredits] = useState(3);
+  const [isVip, setIsVip] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [vipCodeInput, setVipCodeInput] = useState('');
 
+  // Au chargement, on vérifie si l'utilisateur est déjà VIP ou ses crédits
   useEffect(() => {
-    const savedCredits = localStorage.getItem('reviewSaviorCredits');
-    if (savedCredits !== null) setCredits(parseInt(savedCredits));
+    const vipStatus = localStorage.getItem('reviewSaviorVip');
+    if (vipStatus === 'true') {
+      setIsVip(true);
+      setCredits(9999); // Illimité visuel
+    } else {
+      const savedCredits = localStorage.getItem('reviewSaviorCredits');
+      if (savedCredits !== null) setCredits(parseInt(savedCredits));
+    }
   }, []);
 
   const generateResponse = async () => {
-    if (credits <= 0) {
+    // Si pas VIP et plus de crédits -> Paywall
+    if (!isVip && credits <= 0) {
       setShowPaywall(true);
       return;
     }
@@ -47,9 +59,13 @@ export default function Home() {
       const data = await res.json();
       if (data.result) {
         setResponse(data.result);
-        const newCredits = credits - 1;
-        setCredits(newCredits);
-        localStorage.setItem('reviewSaviorCredits', newCredits);
+        
+        // On décrémente SEULEMENT si pas VIP
+        if (!isVip) {
+          const newCredits = credits - 1;
+          setCredits(newCredits);
+          localStorage.setItem('reviewSaviorCredits', newCredits);
+        }
       }
     } catch (error) {
       alert("Erreur de connexion.");
@@ -63,7 +79,20 @@ export default function Home() {
     if (reviewLink) {
       window.open(reviewLink, '_blank');
     } else {
-      alert("Lien copié ! (Vous n'avez pas mis de lien vers l'avis)");
+      alert("Lien copié !");
+    }
+  };
+
+  const handleVipCode = () => {
+    // C'EST ICI LE MOT DE PASSE SECRET : "PRO2025"
+    if (vipCodeInput.trim().toUpperCase() === "PRO2025") {
+      setIsVip(true);
+      setCredits(9999);
+      localStorage.setItem('reviewSaviorVip', 'true');
+      setShowPaywall(false);
+      alert("Code valide ! Accès illimité débloqué à vie. 🚀");
+    } else {
+      alert("Code invalide. Vérifiez votre mail.");
     }
   };
 
@@ -78,8 +107,12 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-1 text-sm font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
-            <span>⚡ Crédits restants :</span>
-            <span className={credits === 0 ? "text-red-500 font-bold" : "text-blue-600 font-bold"}>{credits}</span>
+            <span>⚡ Crédits :</span>
+            {isVip ? (
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 font-bold">ILLIMITÉ ♾️</span>
+            ) : (
+              <span className={credits === 0 ? "text-red-500 font-bold" : "text-blue-600 font-bold"}>{credits}</span>
+            )}
           </div>
         </div>
       </nav>
@@ -87,7 +120,7 @@ export default function Home() {
       {/* --- MAIN CONTENT --- */}
       <main className="max-w-5xl mx-auto px-4 py-12 flex flex-col md:flex-row gap-12">
         
-        {/* COLONNE GAUCHE : L'OUTIL */}
+        {/* COLONNE GAUCHE */}
         <div className="flex-1">
           <div className="mb-8">
             <h1 className="text-4xl font-extrabold text-slate-900 mb-4 leading-tight">
@@ -113,17 +146,15 @@ export default function Home() {
                 />
               </div>
 
-              {/* NOUVEAU CHAMP : LIEN URL */}
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">Lien vers l'avis (Optionnel)</label>
                 <input
                   type="text"
                   value={reviewLink}
                   onChange={(e) => setReviewLink(e.target.value)}
-                  placeholder="Ex: https://google.com/maps/..."
+                  placeholder="Ex: http://googleusercontent.com/..."
                   className="w-full p-3 rounded-xl bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white focus:ring-0 transition-all outline-none text-slate-700 text-sm"
                 />
-                <p className="text-xs text-slate-400 mt-1">Permet d'ouvrir la page directement après la génération.</p>
               </div>
 
               <div>
@@ -175,13 +206,11 @@ export default function Home() {
                   {response}
                 </div>
                 
-                {/* NOUVEAUX BOUTONS D'ACTION */}
                 <div className="mt-4 flex gap-3">
                   <button 
                     onClick={() => navigator.clipboard.writeText(response)}
                     className="flex-1 py-3 bg-white border border-green-300 text-green-700 font-bold rounded-lg hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                     Copier
                   </button>
                   
@@ -201,10 +230,8 @@ export default function Home() {
           )}
         </div>
 
-        {/* COLONNE DROITE : PREUVE SOCIALE */}
+        {/* COLONNE DROITE */}
         <div className="w-full md:w-80 space-y-6">
-          
-          {/* Témoignage */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div className="flex text-yellow-400 mb-3">
               {[1,2,3,4,5].map(i => <StarIcon key={i} />)}
@@ -221,7 +248,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Features */}
           <div className="bg-slate-900 text-white p-6 rounded-xl shadow-lg">
             <h3 className="font-bold text-lg mb-4">Pourquoi Fadi Review ?</h3>
             <ul className="space-y-3 text-sm text-slate-300">
@@ -230,30 +256,49 @@ export default function Home() {
               <li className="flex items-start"><CheckIcon /> <span>Gagne 2h par semaine</span></li>
             </ul>
           </div>
-
         </div>
       </main>
 
-      {/* --- PAYWALL MODAL --- */}
+      {/* --- PAYWALL MODAL AVEC CODE VIP --- */}
       {showPaywall && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full relative z-10 text-center animate-bounce-in">
             <LockIcon />
             <h2 className="text-2xl font-bold text-slate-900 mb-2">Passez à la vitesse supérieure</h2>
-            <p className="text-slate-600 mb-8">
-              Vous avez utilisé vos 3 essais gratuits. Pour continuer à protéger votre réputation, débloquez l'accès illimité.
+            <p className="text-slate-600 mb-6">
+              Essais gratuits terminés. Débloquez l'illimité pour protéger votre réputation à vie.
             </p>
             
             <a 
-              href="https://buy.stripe.com/test_eVqbJ0df3afu6AS1ty7g400"
+              href="https://buy.stripe.com/..." // REMETS TON LIEN STRIPE ICI IMPERATIVEMENT
               target="_blank"
-              className="block w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg hover:shadow-lg hover:scale-[1.02] transition-all"
+              className="block w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg hover:shadow-lg hover:scale-[1.02] transition-all mb-6"
             >
               Débloquer l'illimité (29€)
             </a>
             
-            <p className="mt-4 text-xs text-slate-400">
+            {/* SECTION CODE SECRET */}
+            <div className="border-t border-slate-100 pt-6">
+              <p className="text-sm font-bold text-slate-700 mb-2">Vous avez déjà payé ?</p>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="Entrez votre code VIP"
+                  value={vipCodeInput}
+                  onChange={(e) => setVipCodeInput(e.target.value)}
+                  className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                />
+                <button 
+                  onClick={handleVipCode}
+                  className="bg-slate-800 text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-slate-700"
+                >
+                  Valider
+                </button>
+              </div>
+            </div>
+
+            <p className="mt-6 text-xs text-slate-400">
               Satisfait ou remboursé sous 14 jours. Sans engagement.
             </p>
           </div>
