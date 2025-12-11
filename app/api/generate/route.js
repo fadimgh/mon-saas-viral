@@ -7,7 +7,7 @@ const openai = new OpenAI({
 
 export async function POST(req) {
   try {
-    // ASTUCE : On importe l'outil PDF ici, à l'intérieur, pour éviter le bug de Vercel
+    // Importation sécurisée pour Vercel
     const pdf = require('pdf-parse'); 
 
     const formData = await req.formData();
@@ -15,37 +15,36 @@ export async function POST(req) {
 
     let textToAnalyze = "";
 
-    // Cas 1 : Fichier PDF
     if (file) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
+      
       try {
         const data = await pdf(buffer);
         textToAnalyze = data.text;
+        
+        // VÉRIFICATION CRITIQUE : Si le texte est vide, c'est un scan !
+        if (!textToAnalyze || textToAnalyze.trim().length < 10) {
+            return NextResponse.json({ error: "Ce PDF est une image (scan). Veuillez utiliser un PDF avec du texte sélectionnable." }, { status: 400 });
+        }
+
       } catch (e) {
         console.error("PDF Error:", e);
-        return NextResponse.json({ error: "Failed to read PDF" }, { status: 500 });
+        return NextResponse.json({ error: "Le fichier PDF est illisible." }, { status: 500 });
       }
-    } 
-    // Cas 2 : Erreur (pas de fichier)
-    else {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    } else {
+      return NextResponse.json({ error: "Aucun fichier reçu." }, { status: 400 });
     }
 
-    // On coupe le texte s'il est trop long
+    // On coupe pour l'IA
     const truncatedText = textToAnalyze.substring(0, 15000);
 
     const systemPrompt = `You are "ScanMyContract", an expert AI Legal Auditor.
     Analyze the contract text provided below.
-    
-    Detect and list the RISKS and TRAPS using these emojis:
-    🔴 [CRITICAL RISK]: For dangerous clauses.
-    ⚠️ [WARNING]: For vague terms or disadvantageous conditions.
-    ✅ [GOOD]: If a specific section is standard and safe.
+    Detect risks using these emojis: 🔴 (Critical), ⚠️ (Warning), ✅ (Safe).
+    Output a bullet point list. Be concise.`;
 
-    Format as a concise bullet point list. Be professional.`;
-
-    const userPrompt = `Analyze this contract: "${truncatedText}"`;
+    const userPrompt = `Analyze this: "${truncatedText}"`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
@@ -61,6 +60,7 @@ export async function POST(req) {
 
   } catch (error) {
     console.error("Server Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    // On renvoie l'erreur exacte pour que tu la voies
+    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
   }
 }
