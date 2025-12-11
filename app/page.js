@@ -99,6 +99,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-900 font-sans text-slate-100 selection:bg-emerald-500 selection:text-white">
       
+      {/* NAVBAR */}
       <nav className="w-full border-b border-slate-800 px-6 py-4 flex justify-between items-center bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -109,6 +110,7 @@ export default function Home() {
         </div>
       </nav>
 
+      {/* MAIN CONTENT */}
       <main className="max-w-4xl mx-auto px-4 py-16 flex flex-col items-center">
         
         <div className="text-center mb-10 max-w-2xl">
@@ -165,7 +167,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* RESULTS */}
+        {/* RESULTS TERMINAL */}
         {analysis && (
           <div className="w-full mt-8 animate-fade-in-up">
             <div className="bg-black border border-slate-700 rounded-xl p-6 relative shadow-2xl">
@@ -184,7 +186,7 @@ export default function Home() {
 
       </main>
 
-      {/* PAYWALL */}
+      {/* PAYWALL MODAL */}
       {showPaywall && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
@@ -195,7 +197,7 @@ export default function Home() {
             </p>
             
             <a 
-              href="https://buy.stripe.com/test_eVqbJ0df3afu6AS1ty7g400" // METS TON LIEN STRIPE ICI
+              href="https://stripe.com" // METS TON LIEN STRIPE ICI
               target="_blank"
               className="block w-full py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-black font-bold text-lg hover:shadow-lg transition-all mb-6"
             >
