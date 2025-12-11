@@ -1,14 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['pdf-parse'],
-  },
-  // On augmente la limite de taille pour l'API (juste au cas où)
-  api: {
-    bodyParser: {
-      sizeLimit: '4mb',
+    // On garde juste la limite de taille pour éviter les fichiers géants
+    experimental: {
+        serverActions: {
+            bodySizeLimit: '4mb',
+        },
     },
-  },
 };
 
 export default nextConfig;
