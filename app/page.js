@@ -37,7 +37,15 @@ export default function Home() {
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      
+      // PROTECTION TAILLE FICHIER (4 Mo Max)
+      if (selectedFile.size > 4 * 1024 * 1024) {
+        alert("⚠️ Fichier trop volumineux ! La limite est de 4 Mo.");
+        return;
+      }
+      
+      setFile(selectedFile);
     }
   };
 
@@ -65,7 +73,13 @@ export default function Home() {
         method: 'POST',
         body: formData,
       });
+      
       const data = await res.json();
+      
+      if (!res.ok) {
+        // Affiche l'erreur exacte venant du serveur
+        throw new Error(data.error || "Erreur serveur");
+      }
       
       if (data.result) {
         setAnalysis(data.result);
@@ -74,11 +88,9 @@ export default function Home() {
           setCredits(newCredits);
           localStorage.setItem('scanCredits', newCredits);
         }
-      } else {
-        alert("Error: Could not read this PDF.");
       }
     } catch (error) {
-      alert("Error uploading file.");
+      alert(`Erreur: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -99,7 +111,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-900 font-sans text-slate-100 selection:bg-emerald-500 selection:text-white">
       
-      {/* NAVBAR */}
       <nav className="w-full border-b border-slate-800 px-6 py-4 flex justify-between items-center bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -110,9 +121,7 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* MAIN CONTENT */}
       <main className="max-w-4xl mx-auto px-4 py-16 flex flex-col items-center">
-        
         <div className="text-center mb-10 max-w-2xl">
           <ShieldIcon />
           <h1 className="text-5xl font-extrabold text-white mb-6 tracking-tight">
@@ -123,9 +132,7 @@ export default function Home() {
           </p>
         </div>
 
-        {/* UPLOAD ZONE */}
         <div className="w-full bg-slate-800/50 border border-slate-700 rounded-2xl p-2 shadow-2xl backdrop-blur-sm">
-          
           <div 
             onClick={() => fileInputRef.current.click()}
             className="bg-slate-900 rounded-xl border-2 border-dashed border-slate-700 hover:border-emerald-500 hover:bg-slate-800/50 transition-all cursor-pointer p-12 flex flex-col items-center justify-center group"
@@ -137,7 +144,6 @@ export default function Home() {
               accept=".pdf"
               className="hidden" 
             />
-            
             {file ? (
               <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-lg border border-slate-600">
                 <FileIcon />
@@ -149,7 +155,7 @@ export default function Home() {
                   <UploadIcon />
                 </div>
                 <p className="text-slate-400 font-medium mt-4">Click to upload PDF Contract</p>
-                <p className="text-slate-600 text-xs mt-2">Maximum 5MB</p>
+                <p className="text-slate-600 text-xs mt-2">Maximum 4MB (Text PDF only)</p>
               </>
             )}
           </div>
@@ -167,7 +173,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* RESULTS TERMINAL */}
         {analysis && (
           <div className="w-full mt-8 animate-fade-in-up">
             <div className="bg-black border border-slate-700 rounded-xl p-6 relative shadow-2xl">
@@ -183,27 +188,21 @@ export default function Home() {
             </div>
           </div>
         )}
-
       </main>
 
-      {/* PAYWALL MODAL */}
       {showPaywall && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
           <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-8 max-w-md w-full relative z-10 text-center">
             <h2 className="text-2xl font-bold text-white mb-2">Maximum Risk Protection</h2>
-            <p className="text-slate-400 mb-8 text-sm">
-              Unlock unlimited PDF audits and protect yourself.
-            </p>
-            
+            <p className="text-slate-400 mb-8 text-sm">Unlock unlimited PDF audits and protect yourself.</p>
             <a 
-              href="https://stripe.com" 
+              href="https://stripe.com" // METS TON LIEN STRIPE ICI
               target="_blank"
               className="block w-full py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-black font-bold text-lg hover:shadow-lg transition-all mb-6"
             >
               Unlock Unlimited Access ($29)
             </a>
-            
             <div className="border-t border-slate-800 pt-6">
               <div className="flex gap-2">
                 <input 
