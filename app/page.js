@@ -197,7 +197,7 @@ export default function Home() {
             </p>
             
             <a 
-              href="https://stripe.com" // METS TON LIEN STRIPE ICI
+              href="https://stripe.com" 
               target="_blank"
               className="block w-full py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-black font-bold text-lg hover:shadow-lg transition-all mb-6"
             >
