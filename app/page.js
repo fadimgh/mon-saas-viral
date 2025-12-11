@@ -255,7 +255,7 @@ export default function Home() {
                     </p>
                     
                     <a 
-                      href="https://stripe.com" // METS TON LIEN 5€ ICI
+                      href="https://buy.stripe.com/test_5kQ8wOb6Vbjy3oG2xC7g401" // METS TON LIEN 5€ ICI
                       target="_blank"
                       onClick={() => setShowUnlockModal(true)} // Ouvre la case code après clic
                       className="block w-full py-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-[#0B0F19] font-bold text-lg mb-4 transition-transform hover:scale-105"
