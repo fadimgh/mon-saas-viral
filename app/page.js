@@ -1,20 +1,23 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 // --- ICONS ---
 const ShieldIcon = () => (
   <svg className="w-12 h-12 text-emerald-400 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
 );
-
-const SearchIcon = () => (
-  <svg className="w-5 h-5 animate-pulse mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+const UploadIcon = () => (
+  <svg className="w-8 h-8 text-emerald-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+);
+const FileIcon = () => (
+  <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
 );
 
 export default function Home() {
-  const [contractText, setContractText] = useState('');
+  const [file, setFile] = useState(null);
   const [analysis, setAnalysis] = useState('');
   const [loading, setLoading] = useState(false);
   const [scanStep, setScanStep] = useState('');
+  const fileInputRef = useRef(null);
 
   const [credits, setCredits] = useState(3);
   const [isVip, setIsVip] = useState(false);
@@ -32,29 +35,38 @@ export default function Home() {
     }
   }, []);
 
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
+  };
+
   const runScan = async () => {
     if (!isVip && credits <= 0) {
       setShowPaywall(true);
       return;
     }
-    if (!contractText) return;
+    if (!file) return;
 
     setLoading(true);
     setAnalysis('');
     
-    const steps = ["Initializing Scan...", "Detecting Hidden Clauses...", "Checking Legal Compliance...", "Finalizing Report..."];
+    const steps = ["Reading PDF...", "Analyzing Clauses...", "Detecting Traps...", "Finalizing Report..."];
     for (let i = 0; i < steps.length; i++) {
       setScanStep(steps[i]);
       await new Promise(r => setTimeout(r, 800));
     }
 
     try {
+      const formData = new FormData();
+      formData.append('file', file);
+
       const res = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contractText }),
+        body: formData,
       });
       const data = await res.json();
+      
       if (data.result) {
         setAnalysis(data.result);
         if (!isVip) {
@@ -62,9 +74,11 @@ export default function Home() {
           setCredits(newCredits);
           localStorage.setItem('scanCredits', newCredits);
         }
+      } else {
+        alert("Error: Could not read this PDF.");
       }
     } catch (error) {
-      alert("Error scanning contract.");
+      alert("Error uploading file.");
     } finally {
       setLoading(false);
     }
@@ -103,44 +117,55 @@ export default function Home() {
             Don't sign <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500">blindly.</span>
           </h1>
           <p className="text-lg text-slate-400">
-            AI-powered contract audit. Detect traps, hidden fees, and dangerous clauses in seconds.
+            Upload your PDF contract. AI detects traps, hidden fees, and dangerous clauses in seconds.
           </p>
         </div>
 
+        {/* UPLOAD ZONE */}
         <div className="w-full bg-slate-800/50 border border-slate-700 rounded-2xl p-2 shadow-2xl backdrop-blur-sm">
           
-          <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-            <div className="flex items-center px-4 py-2 border-b border-slate-800 bg-slate-950/50 gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <span className="ml-4 text-xs text-slate-500 font-mono">contract_viewer.txt</span>
-            </div>
-
-            <textarea
-              rows="10"
-              value={contractText}
-              onChange={(e) => setContractText(e.target.value)}
-              placeholder="Paste your contract text here to audit..."
-              className="w-full p-6 bg-transparent text-slate-300 placeholder-slate-600 outline-none resize-none font-mono text-sm leading-relaxed"
+          <div 
+            onClick={() => fileInputRef.current.click()}
+            className="bg-slate-900 rounded-xl border-2 border-dashed border-slate-700 hover:border-emerald-500 hover:bg-slate-800/50 transition-all cursor-pointer p-12 flex flex-col items-center justify-center group"
+          >
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              accept=".pdf"
+              className="hidden" 
             />
+            
+            {file ? (
+              <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-lg border border-slate-600">
+                <FileIcon />
+                <span className="font-mono text-emerald-400">{file.name}</span>
+              </div>
+            ) : (
+              <>
+                <div className="group-hover:scale-110 transition-transform duration-300">
+                  <UploadIcon />
+                </div>
+                <p className="text-slate-400 font-medium mt-4">Click to upload PDF Contract</p>
+                <p className="text-slate-600 text-xs mt-2">Maximum 5MB</p>
+              </>
+            )}
           </div>
 
           <button
             onClick={runScan}
-            disabled={loading || !contractText}
+            disabled={loading || !file}
             className="w-full mt-2 py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold text-lg transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
               <span className="font-mono animate-pulse">{scanStep}</span>
             ) : (
-              <>
-                <SearchIcon /> SCAN FOR RISKS
-              </>
+              "START SECURITY SCAN"
             )}
           </button>
         </div>
 
+        {/* RESULTS */}
         {analysis && (
           <div className="w-full mt-8 animate-fade-in-up">
             <div className="bg-black border border-slate-700 rounded-xl p-6 relative shadow-2xl">
@@ -159,28 +184,25 @@ export default function Home() {
 
       </main>
 
+      {/* PAYWALL */}
       {showPaywall && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
           <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-8 max-w-md w-full relative z-10 text-center">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-            </div>
             <h2 className="text-2xl font-bold text-white mb-2">Maximum Risk Protection</h2>
             <p className="text-slate-400 mb-8 text-sm">
-              You've used your free scans. Unlock unlimited audits and protect yourself from bad deals forever.
+              Unlock unlimited PDF audits and protect yourself.
             </p>
             
             <a 
-              href="https://stripe.com" 
+              href="https://buy.stripe.com/test_eVqbJ0df3afu6AS1ty7g400" // METS TON LIEN STRIPE ICI
               target="_blank"
-              className="block w-full py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-black font-bold text-lg hover:shadow-lg hover:shadow-emerald-500/20 transition-all mb-6"
+              className="block w-full py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-black font-bold text-lg hover:shadow-lg transition-all mb-6"
             >
               Unlock Unlimited Access ($29)
             </a>
             
             <div className="border-t border-slate-800 pt-6">
-              <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Have a code?</p>
               <div className="flex gap-2">
                 <input 
                   type="text" 

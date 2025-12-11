@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import pdf from 'pdf-parse';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -7,28 +8,41 @@ const openai = new OpenAI({
 
 export async function POST(req) {
   try {
-    const { contractText } = await req.json();
+    // 1. On récupère le fichier envoyé
+    const formData = await req.formData();
+    const file = formData.get('file');
 
-    if (!contractText) {
-      return NextResponse.json({ error: "No text provided" }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
+    // 2. On transforme le fichier en texte lisible pour l'IA
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    
+    let contractText = "";
+    try {
+      const data = await pdf(buffer);
+      contractText = data.text;
+    } catch (e) {
+      return NextResponse.json({ error: "Failed to read PDF" }, { status: 500 });
+    }
+
+    // 3. On coupe si c'est trop long (L'IA a une limite)
+    const truncatedText = contractText.substring(0, 15000); // ~5-6 pages
+
+    // 4. Le Prompt de l'Avocat
     const systemPrompt = `You are "ScanMyContract", an expert AI Legal Auditor.
-    Your job is to protect freelancers and individuals from bad contracts.
+    Analyze the contract text provided.
     
-    Analyze the text provided. Do NOT summarize it.
-    Instead, detect and list the RISKS and TRAPS using these emojis:
-    
-    🔴 [CRITICAL RISK]: For dangerous clauses (non-compete, unlimited liability, unpaid work).
-    ⚠️ [WARNING]: For vague terms or disadvantageous conditions (long payment terms).
-    ✅ [GOOD]: If a specific section is standard and safe (only mention 1 or 2 key good points).
+    Detect and list the RISKS and TRAPS using these emojis:
+    🔴 [CRITICAL RISK]: For dangerous clauses.
+    ⚠️ [WARNING]: For vague terms or disadvantageous conditions.
+    ✅ [GOOD]: If a specific section is standard and safe.
 
-    Format the output as a clean list of bullet points.
-    Keep it concise, punchy, and professional.
-    If the contract looks safe, say it clearly.
-    `;
+    Format as a concise bullet point list. Be professional and sharp.`;
 
-    const userPrompt = `Analyze this contract part: "${contractText.substring(0, 3000)}"`; // On limite pour l'instant
+    const userPrompt = `Analyze this contract: "${truncatedText}"`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
@@ -36,7 +50,7 @@ export async function POST(req) {
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      temperature: 0.5, // Plus analytique, moins créatif
+      temperature: 0.5,
     });
 
     const result = completion.choices[0].message.content;
