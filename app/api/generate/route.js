@@ -1,21 +1,27 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
+// --- LE CORRECTIF MAGIQUE (Polyfill) ---
+// On crée une fausse "DOMMatrix" pour que l'outil PDF arrête de se plaindre
+if (!global.DOMMatrix) {
+  global.DOMMatrix = class DOMMatrix {};
+}
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 export async function POST(req) {
   try {
-    // Importation sécurisée pour Vercel
-    const pdf = require('pdf-parse'); 
-
     const formData = await req.formData();
     const file = formData.get('file');
 
     let textToAnalyze = "";
 
     if (file) {
+      // Importation sécurisée à l'intérieur de la fonction
+      const pdf = require('pdf-parse'); 
+      
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
       
@@ -23,14 +29,14 @@ export async function POST(req) {
         const data = await pdf(buffer);
         textToAnalyze = data.text;
         
-        // VÉRIFICATION CRITIQUE : Si le texte est vide, c'est un scan !
-        if (!textToAnalyze || textToAnalyze.trim().length < 10) {
-            return NextResponse.json({ error: "Ce PDF est une image (scan). Veuillez utiliser un PDF avec du texte sélectionnable." }, { status: 400 });
+        // Vérification anti-scan (si vide, c'est une image)
+        if (!textToAnalyze || textToAnalyze.trim().length < 5) {
+            return NextResponse.json({ error: "Ce PDF semble être une image (scan). Veuillez utiliser un fichier avec du texte sélectionnable." }, { status: 400 });
         }
 
       } catch (e) {
-        console.error("PDF Error:", e);
-        return NextResponse.json({ error: "Le fichier PDF est illisible." }, { status: 500 });
+        console.error("PDF Parsing Error:", e);
+        return NextResponse.json({ error: "Le fichier PDF est illisible ou protégé." }, { status: 500 });
       }
     } else {
       return NextResponse.json({ error: "Aucun fichier reçu." }, { status: 400 });
@@ -60,7 +66,7 @@ export async function POST(req) {
 
   } catch (error) {
     console.error("Server Error:", error);
-    // On renvoie l'erreur exacte pour que tu la voies
+    // On renvoie l'erreur pour comprendre
     return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
   }
 }
