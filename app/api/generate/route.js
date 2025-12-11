@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import pdf from 'pdf-parse';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -8,10 +7,11 @@ const openai = new OpenAI({
 
 export async function POST(req) {
   try {
+    // ASTUCE : On importe l'outil PDF ici, à l'intérieur, pour éviter le bug de Vercel
+    const pdf = require('pdf-parse'); 
+
     const formData = await req.formData();
     const file = formData.get('file');
-    const review = formData.get('review'); // Au cas où on repasse en mode texte
-    const contractTextOnly = formData.get('contractText'); 
 
     let textToAnalyze = "";
 
@@ -23,27 +23,29 @@ export async function POST(req) {
         const data = await pdf(buffer);
         textToAnalyze = data.text;
       } catch (e) {
+        console.error("PDF Error:", e);
         return NextResponse.json({ error: "Failed to read PDF" }, { status: 500 });
       }
     } 
-    // Cas 2 : Texte simple (fallback)
-    else if (contractTextOnly) {
-      textToAnalyze = contractTextOnly;
-    }
-    // Cas 3 : Rien
+    // Cas 2 : Erreur (pas de fichier)
     else {
-      return NextResponse.json({ error: "No content provided" }, { status: 400 });
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // On coupe si c'est trop long
+    // On coupe le texte s'il est trop long
     const truncatedText = textToAnalyze.substring(0, 15000);
 
     const systemPrompt = `You are "ScanMyContract", an expert AI Legal Auditor.
     Analyze the contract text provided below.
-    Detect risks using these emojis: 🔴 (Critical), ⚠️ (Warning), ✅ (Safe).
-    Output a bullet point list. Be concise.`;
+    
+    Detect and list the RISKS and TRAPS using these emojis:
+    🔴 [CRITICAL RISK]: For dangerous clauses.
+    ⚠️ [WARNING]: For vague terms or disadvantageous conditions.
+    ✅ [GOOD]: If a specific section is standard and safe.
 
-    const userPrompt = `Analyze this: "${truncatedText}"`;
+    Format as a concise bullet point list. Be professional.`;
+
+    const userPrompt = `Analyze this contract: "${truncatedText}"`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
